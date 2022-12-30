@@ -1,55 +1,166 @@
-import telebot
-# from tg_bot_info import *
+from time import sleep
 
-# Попробуйте ввести в Terminal вот это, если бот не включится:
+import telebot
+from telebot import types
+
+from token_and_text import *
+
+# Попробуйте ввести в Terminal вот это, если код бота не заработает:
 # pip3 uninstall telebot
 # pip3 uninstall PyTelegramBotAPI
 # pip3 install pyTelegramBotAPI
 # pip3 install --upgrade pyTelegramBotAPI
 
+bot = telebot.TeleBot(token_bot)
 
-bot = telebot.TeleBot("5956003891:AAF9k0lCbhildThOwDj1BniNj84aSpUAwKQ")
-
-
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-	bot.reply_to(message, "Howdy, how are you doing?")
+name_company, name_representative, email, phone_num = '', '', '', ''
 
 
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-	bot.reply_to(message, message.text)
+@bot.message_handler(commands=['help'])
+def help_me(message):
+    bot.send_message(message.from_user.id, help_text)
 
 
-bot.infinity_polling()
+@bot.message_handler(commands=['start'])
+def start_conversation(message):
 
-# import telebot
-# from telebot import types
-#
-# keyboard1 = telebot.types.ReplyKeyboardMarkup()
-# keyboard1.row('Ok', 'Bye')
-#
-# bot = telebot.TeleBot("5956003891:AAF9k0lCbhildThOwDj1BniNj84aSpUAwKQ")
-#
-#
-# @bot.message_handler(commands=['start'])
-# def start_message(message):
-# 	bot.send_message(message.chat.id, 'Hi what do you want /start', reply_markup=keyboard1)
-#
-#
-# @bot.message_handler(content_types=['text'])
-# def send_text(message):
-# 	if message.text.lower() == 'Hello':
-# 		bot.send_message(message.chat.id, message.text.upper())
-# 	elif message.text.lower() == 'Bye':
-# 		bot.send_message(message.chat.id, 'see you soon')
-# 	elif message.text.lower() == 'I love you':
-# 		bot.send_sticker(message.chat.id, 'API')
-#
-#
-# @bot.message_handler(content_types=['sticker'])
-# def sticker_id(message):
-# 	print(message)
-#
-#
-# bot.polling(none_stop=True)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+    item1 = types.KeyboardButton(meet)
+    item2 = types.KeyboardButton(info_author)
+    item3 = types.KeyboardButton(connection_author)
+
+    markup.add(item1, item2, item3)
+    bot.send_message(message.from_user.id, text='Начнём', reply_markup=markup)
+
+    keyboard = types.InlineKeyboardMarkup()
+    btn_yes = types.InlineKeyboardButton(text='Да', callback_data='yes')
+    btn_no = types.InlineKeyboardButton(text='Нет', callback_data='no')
+    keyboard.add(btn_yes, btn_no)
+
+    bot.send_message(message.from_user.id, greeting, reply_markup=keyboard)
+
+
+@bot.message_handler(content_types=['text'])
+def bot_message(message):
+    if message.chat.type == 'private':
+        if message.text == meet:
+            keyboard = types.InlineKeyboardMarkup()
+            btn_yes = types.InlineKeyboardButton(text='Да', callback_data='yes')
+            btn_no = types.InlineKeyboardButton(text='Нет', callback_data='no')
+            keyboard.add(btn_yes, btn_no)
+
+            bot.send_message(message.from_user.id, greeting, reply_markup=keyboard)
+
+        elif message.text == info_author or message.text == info_author_back:
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+            item1 = types.KeyboardButton(knowledge_py)
+            item2 = types.KeyboardButton(last_work)
+            item3 = types.KeyboardButton(personal_skills)
+            item4 = types.KeyboardButton(goals_tasks)
+            back_btn = types.KeyboardButton(back)
+            markup.add(item1, item2, item3, item4, back_btn)
+            bot.send_message(message.from_user.id, info_author, reply_markup=markup)
+
+        elif message.text == knowledge_py:
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+            item1 = types.KeyboardButton('Пройденные курсы и сертификаты')
+            item2 = types.KeyboardButton('Кратко о том что знает')
+            item3 = types.KeyboardButton('Учебный план')
+            item4 = types.KeyboardButton('Проекты')
+            back_btn = types.KeyboardButton(info_author_back)
+            markup.add(item1, item2, item3, item4, back_btn)
+            bot.send_message(message.from_user.id, info_author, reply_markup=markup)
+
+        elif message.text == back:
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+            item1 = types.KeyboardButton(meet)
+            item2 = types.KeyboardButton(info_author)
+            item3 = types.KeyboardButton(connection_author)
+
+            markup.add(item1, item2, item3)
+            bot.send_message(message.from_user.id, text=back, reply_markup=markup)
+
+        elif message.text == connection_author:
+            bot.send_message(message.chat.id, connect_information)
+
+
+
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_worker(call):
+
+    if call.data == 'yes':
+        bot.send_message(call.message.chat.id, text_i_know_you)
+        sleep(1)
+        # написать условие если есть имя компании в файле, то писать что знаешь если нет то знакомимся заново
+        bot.send_message(call.message.chat.id, what_name)
+        bot.register_next_step_handler(call.message, reg_name)
+
+    elif call.data == 'no':
+        bot.send_message(call.message.chat.id, text_i_know_no)
+        bot.send_message(call.message.chat.id, what_name)
+        bot.register_next_step_handler(call.message, reg_name)
+
+    elif call.data == 'yes_reg':
+        bot.send_message(call.message.chat.id, reg_success)
+        text_info = f'{name_company},{name_representative},{phone_num},{email},{call.message.from_user.id},' \
+                    f'{call.message.from_user.first_name},{call.message.from_user.last_name},' \
+                    f'{call.message.from_user.username}\n'
+
+        write_info(text_info)
+
+    elif call.data == 'no_reg':
+        bot.send_message(call.message.chat.id, "Хорошо, начнём с начала.")
+        bot.send_message(call.message.chat.id, what_name)
+        bot.register_next_step_handler(call.message, reg_name)
+
+
+def reg_name(message):
+    global name_representative
+    name_representative = message.text
+    bot.send_message(message.from_user.id, what_company)
+    bot.register_next_step_handler(message, reg_company)
+
+
+def reg_company(message):
+    global name_company
+    name_company = message.text
+    if name_company in xxx: # заменить на нормальный список
+        if name_representative in xxx:  # заменить на нормальный список
+            bot.send_message(message.from_user.id, 'Я нашел Ваше имя в своей записной книжке.')
+        else:
+            bot.send_message(message.from_user.id, 'Я не нашел Ваше имя в своей записной книжке, хотя ранее общался с представителем Вашей компании.')
+    else:
+    bot.send_message(message.from_user.id, what_phone_num)
+    bot.register_next_step_handler(message, reg_phone_num)
+
+
+def reg_phone_num(message):
+    global phone_num
+    phone_num = message.text
+    bot.send_message(message.from_user.id, what_email)
+    bot.register_next_step_handler(message, reg_ok)
+
+
+def reg_ok(message):
+    global email
+    email = message.text
+    bot.send_message(message.from_user.id, text=f'''Вас зовут {name_representative}
+Контактный телефон: {phone_num}
+Почта: {email}
+Компания: {name_company}''')
+    keyboard_reg = types.InlineKeyboardMarkup()
+
+    btn_yes_reg = types.InlineKeyboardButton(text='Да', callback_data='yes_reg')
+    btn_no_reg = types.InlineKeyboardButton(text='Нет', callback_data='no_reg')
+    keyboard_reg.add(btn_yes_reg, btn_no_reg)
+
+    bot.send_message(message.from_user.id, 'Верно?', reply_markup=keyboard_reg)
+
+
+bot.polling(none_stop=True)  # обязательная для работы бота часть

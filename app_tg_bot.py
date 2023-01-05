@@ -5,8 +5,6 @@ from telebot import types
 
 from token_and_text import *
 
-#    Исправить опечатки в тексте, посмотреть как оптимизировать код с помощью словаря т к много повторяющихся элифов и доделать разджел Личные навнавыки, доработать команду / инфоыки
-
 # Попробуйте ввести в Terminal вот это, если код бота не заработает:
 # pip3 uninstall telebot
 # pip3 uninstall PyTelegramBotAPI
@@ -15,12 +13,15 @@ from token_and_text import *
 
 bot = telebot.TeleBot(token_bot)
 
-name_company, name_representative, email, phone_num, text_read = '', '', '', '', ''
-
 
 @bot.message_handler(commands=['help'])
 def help_me(message):
     bot.send_message(message.from_user.id, help_text)
+
+
+@bot.message_handler(commands=['info'])
+def help_me(message):
+    bot.send_message(message.chat.id, connect_information)
 
 
 @bot.message_handler(commands=['start'])
@@ -48,6 +49,15 @@ def bot_message(message):
     """Активация кнопок меню. Каждая кнопка либо создаёт новые кнопки меню либо выводит текст."""
     global text_read
     if message.chat.type == 'private':
+
+        for key, value in dict_command.items():
+            if message.text == key:
+                text_read = value
+                keyboard = types.InlineKeyboardMarkup()
+                btn_read = types.InlineKeyboardButton(text=btn_read_please, callback_data='btn_read_please')
+                keyboard.add(btn_read)
+                bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
+
         if message.text == meet:
             keyboard = types.InlineKeyboardMarkup()
             btn_yes = types.InlineKeyboardButton(text='Да', callback_data='yes')
@@ -90,20 +100,6 @@ def bot_message(message):
                 with open(os.path.join(path_certificate, filename), 'rb') as file_pdf:
                     bot.send_document(message.from_user.id, document=file_pdf)
 
-        elif message.text == 'Кратко о том что знает':
-            text_read = text_knowledge
-            keyboard = types.InlineKeyboardMarkup()
-            btn_read = types.InlineKeyboardButton(text=btn_read_please, callback_data='btn_read_please')
-            keyboard.add(btn_read)
-            bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
-
-        elif message.text == 'Учебный план':
-            text_read = text_training_plan
-            keyboard = types.InlineKeyboardMarkup()
-            btn_read = types.InlineKeyboardButton(text=btn_read_please, callback_data='btn_read_please')
-            keyboard.add(btn_read)
-            bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
-
         elif message.text == 'Проекты':
             text_read = text_project
             keyboard = types.InlineKeyboardMarkup()
@@ -111,20 +107,6 @@ def bot_message(message):
             keyboard.add(btn_read)
             bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
             bot.send_message(message.from_user.id, text=text_project_1)
-
-        elif message.text == goals_tasks:
-            text_read = target_goal
-            keyboard = types.InlineKeyboardMarkup()
-            btn_read = types.InlineKeyboardButton(text=btn_read_please, callback_data='btn_read_please')
-            keyboard.add(btn_read)
-            bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
-
-        elif message.text == last_work:
-            text_read = text_last_work
-            keyboard = types.InlineKeyboardMarkup()
-            btn_read = types.InlineKeyboardButton(text=btn_read_please, callback_data='btn_read_please')
-            keyboard.add(btn_read)
-            bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
 
         elif message.text == back:
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -144,7 +126,6 @@ def bot_message(message):
 def callback_worker(call):
     if call.data == 'yes':
         bot.send_message(call.message.chat.id, text_i_know_you)
-        # написать условие если есть имя компании в файле, то писать что знаешь если нет то знакомимся заново
         bot.send_message(call.message.chat.id, what_name)
         bot.register_next_step_handler(call.message, find_name)
 
@@ -158,9 +139,6 @@ def callback_worker(call):
         text_info = f'{name_company},{name_representative},{phone_num},{email},{call.message.from_user.id},' \
                     f'{call.message.from_user.first_name},{call.message.from_user.last_name},' \
                     f'{call.message.from_user.username}\n'  # для txt файла
-        # text_info = [name_company, name_representative, phone_num, email, call.message.from_user.id,
-        #              call.message.from_user.first_name, call.message.from_user.last_name,
-        #              call.message.from_user.username]
 
         write_info(text_info)
 

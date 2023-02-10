@@ -1,0 +1,2 @@
+name_company,name_representative,phone_num,email,id,name_tg,lastname_tg,username_tg
+

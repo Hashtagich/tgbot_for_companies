@@ -2,6 +2,7 @@ import os
 
 import telebot
 from telebot import types
+from notifiers import get_notifier
 
 from token_and_text import *
 
@@ -12,6 +13,7 @@ from token_and_text import *
 # pip3 install --upgrade pyTelegramBotAPI
 
 bot = telebot.TeleBot(data['token_bot'])
+telegram = get_notifier('telegram')
 
 
 @bot.message_handler(commands=['help'])
@@ -20,8 +22,16 @@ def help_me(message):
 
 
 @bot.message_handler(commands=['info'])
-def help_me(message):
+def info_me(message):
     bot.send_message(message.chat.id, data['connect_information'])
+    message_to_me = f"""Мне только что написали.
+    Вот информация:
+        ID: {message.from_user.id};
+        FIRST_NAME: {message.from_user.first_name};
+        LAST_NAME: {message.from_user.last_name};
+        USERNAME: {message.from_user.username}."""
+
+    telegram.notify(token=data['token_bot'], chat_id=data["user_id"], message=message_to_me)
 
 
 @bot.message_handler(commands=['start'])
@@ -119,7 +129,7 @@ def bot_message(message):
             bot.send_message(message.from_user.id, text=data['back'], reply_markup=markup)
 
         elif message.text == data['connection_author']:
-            bot.send_message(message.chat.id, data['connect_information'])
+            info_me(message)
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -136,10 +146,23 @@ def callback_worker(call):
 
     elif call.data == 'yes_reg':
         bot.send_message(call.message.chat.id, data['reg_success'])
-        text_info = f'{name_company},{name_representative},{phone_num},{email},{call.message.from_user.id},' \
-                    f'{call.message.from_user.first_name},{call.message.from_user.last_name},' \
-                    f'{call.message.from_user.username}\n'  # для txt файла
+        text_info = f'{name_company},{name_representative},{phone_num},{email},{list_user_info[0]},' \
+                    f'{list_user_info[1]},{list_user_info[2]},' \
+                    f'{list_user_info[3]}\n'  # для txt файла
 
+        message_to_me = f"""Со мной познакомились. 
+Вот информация: 
+Название компании: {name_company};
+Представитель: {name_representative};
+Номер телефона: {phone_num};
+Почта: {email};
+
+ID: {list_user_info[0]};
+FIRST_NAME: {list_user_info[1]};
+LAST_NAME: {list_user_info[2]};
+USERNAME: {list_user_info[3]}."""
+
+        telegram.notify(token=data['token_bot'], chat_id=data["user_id"], message=message_to_me)
         write_info(text_info)
 
     elif call.data == 'no_reg':
@@ -164,7 +187,7 @@ def find_company(message):
     name_company = message.text
     if name_company.lower() in dict_companies['name_company']:
 
-        if name_representative in dict_companies['name_representative']:
+        if name_representative.lower() in dict_companies['name_representative']:
             # index_for_name_representative = dict_companies['name_company'].index(name_company.lower())
             # find_name_representative = dict_companies['name_representative'][index_for_name_representative].title()
             bot.send_message(message.from_user.id,
@@ -197,12 +220,15 @@ def reg_phone_num(message):
 
 
 def reg_ok(message):
-    global email
+    global email, list_user_info
     email = message.text
     bot.send_message(message.from_user.id, text=f'''Вас зовут {name_representative}
 Контактный телефон: {phone_num}
 Почта: {email}
 Компания: {name_company}''')
+
+    list_user_info = [message.from_user.id, message.from_user.first_name, message.from_user.last_name,
+                      message.from_user.username]
     keyboard_reg = types.InlineKeyboardMarkup()
 
     btn_yes_reg = types.InlineKeyboardButton(text='Да', callback_data='yes_reg')

@@ -1,2 +1,10 @@
 name_company,name_representative,phone_num,email,id,name_tg,lastname_tg,username_tg
-
+нет,антон,нет,нет,5956003891,Fat_Tony,None,i_want_play_game_bot
+ррр,антон,666,нет,5956003891,Fat_Tony,None,i_want_play_game_bot
+yyyyy,антон,uyn,нет,5956003891,Fat_Tony,None,i_want_play_game_bot
+нлша,антогн,ьyuf,yumf,5956003891,Fat_Tony,None,i_want_play_game_bot
+чарп,па,ырек,чоа,5956003891,Fat_Tony,None,i_want_play_game_bot
+rre,err,rereg,ree,437327379,Anton,None,BlackMarvel
+Академия художеств,Анна,нет,нет,437327379,Anton,None,BlackMarvel
+пякп,онв,кпвп,zgr,437327379,Anton,None,BlackMarvel
+zrgzg,zgrg,zgzrg,zgr,437327379,Anton,None,BlackMarvel

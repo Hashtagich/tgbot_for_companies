@@ -17,12 +17,14 @@ telegram = get_notifier('telegram')
 
 
 @bot.message_handler(commands=['help'])
-def help_me(message):
+def help_me(message) -> None:
+    """Функция выводит информационное сообщение."""
     bot.send_message(message.from_user.id, data['help_text'])
 
 
 @bot.message_handler(commands=['info'])
-def info_me(message):
+def info_me(message) -> None:
+    """Функция выводит информацию о разработчике и отправляет разработчику информацию о том кто общается с ботом."""
     bot.send_message(message.chat.id, data['connect_information'])
     message_to_me = f"""Мне только что написали.
     Вот информация:
@@ -35,7 +37,7 @@ def info_me(message):
 
 
 @bot.message_handler(commands=['start'])
-def start_conversation(message):
+def start_conversation(message) -> None:
     """Функция активируется при вводе /start и предлагает юзеру познакомиться."""
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
@@ -55,7 +57,7 @@ def start_conversation(message):
 
 
 @bot.message_handler(content_types=['text'])
-def bot_message(message):
+def bot_message(message) -> None:
     """Активация кнопок меню. Каждая кнопка либо создаёт новые кнопки меню либо выводит текст."""
     global text_read
     if message.chat.type == 'private':
@@ -133,7 +135,9 @@ def bot_message(message):
 
 
 @bot.callback_query_handler(func=lambda call: True)
-def callback_worker(call):
+def callback_worker(call) -> None:
+    """Функция ищет пользователя в базе, запускает процесс регистрации или сохраняет данные пользователя
+    и отправляет разработчику информацию в зависимости от выбранного варианта."""
     if call.data == 'yes':
         bot.send_message(call.message.chat.id, data['text_i_know_you'])
         bot.send_message(call.message.chat.id, data['what_name'])
@@ -174,14 +178,17 @@ USERNAME: {list_user_info[3]}."""
     #     read_text(text_read)
 
 
-def find_name(message):
+def find_name(message) -> None:
+    """Функция принимает сообщение от пользователя и переходит к следующей функции find_company."""
     global name_representative
     name_representative = message.text
     bot.send_message(message.from_user.id, data['what_company'])
     bot.register_next_step_handler(message, find_company)
 
 
-def find_company(message):
+def find_company(message) -> None:
+    """Функция принимает сообщение от пользователя и проверяет наличия имени представителя и название компании,
+    по результатам выдаёт соответсвующий ответ."""
     global name_company
     dict_companies = look_in_notebook(name_txt_file)
     name_company = message.text
@@ -198,28 +205,32 @@ def find_company(message):
         bot.send_message(message.from_user.id, data['i_not_find_company'])
 
 
-def reg_name(message):
+def reg_name(message) -> None:
+    """Функция принимает сообщение от пользователя и переходит к следующей функции reg_company."""
     global name_representative
     name_representative = message.text
     bot.send_message(message.from_user.id, data['what_company'])
     bot.register_next_step_handler(message, reg_company)
 
 
-def reg_company(message):
+def reg_company(message) -> None:
+    """Функция принимает сообщение от пользователя и переходит к следующей функции reg_phone_num."""
     global name_company
     name_company = message.text
     bot.send_message(message.from_user.id, data['what_phone_num'])
     bot.register_next_step_handler(message, reg_phone_num)
 
 
-def reg_phone_num(message):
+def reg_phone_num(message) -> None:
+    """Функция принимает сообщение от пользователя и переходит к следующей функции reg_ok."""
     global phone_num
     phone_num = message.text
     bot.send_message(message.from_user.id, data['what_email'])
     bot.register_next_step_handler(message, reg_ok)
 
 
-def reg_ok(message):
+def reg_ok(message) -> None:
+    """Функция уточняет вся ли информация переданная из функция reg_company, reg_phone_num, reg_name верна."""
     global email, list_user_info
     email = message.text
     bot.send_message(message.from_user.id, text=f'''Вас зовут {name_representative}

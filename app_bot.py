@@ -1,8 +1,11 @@
 import os
+from random import randint, sample
 
+import requests
 import telebot
-from telebot import types
+from geopy import geocoders
 from notifiers import get_notifier
+from telebot import types
 
 from token_and_text import *
 
@@ -15,6 +18,9 @@ from token_and_text import *
 bot = telebot.TeleBot(data['token_bot'])
 telegram = get_notifier('telegram')
 
+dict_conditions_ru = data["data_weather"]["conditions_ru"]
+dict_part_name_ru = data["data_weather"]["part_name_ru"]
+
 
 @bot.message_handler(commands=['help'])
 def help_me(message) -> None:
@@ -26,227 +32,254 @@ def help_me(message) -> None:
 def info_me(message) -> None:
     """Функция выводит информацию о разработчике и отправляет разработчику информацию о том кто общается с ботом."""
     bot.send_message(message.chat.id, data['connect_information'])
-    message_to_me = f"""Мне только что написали.
-    Вот информация:
-        ID: {message.from_user.id};
-        FIRST_NAME: {message.from_user.first_name};
-        LAST_NAME: {message.from_user.last_name};
-        USERNAME: {message.from_user.username}."""
-
+    message_to_me = f"Мне только что написали. {get_info(message)}"
     telegram.notify(token=data['token_bot'], chat_id=data["user_id"], message=message_to_me)
+
+    write_info(get_text_for_write(message) + ', Info\n')
 
 
 @bot.message_handler(commands=['start'])
 def start_conversation(message) -> None:
-    """Функция активируется при вводе /start и предлагает юзеру познакомиться."""
+    """Функция активируется при вводе /start и отправляет уведомление разработчику, что бота активировали
+    и записывает в базу данных информацию о написавшем."""
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
-    item1 = types.KeyboardButton(data['meet'])
+    item1 = types.KeyboardButton(data['simple_move'])
     item2 = types.KeyboardButton(data['info_author'])
     item3 = types.KeyboardButton(data['connection_author'])
 
-    markup.add(item1, item2, item3)
+    markup.add(item2, item3, item1)
     bot.send_message(message.from_user.id, text='Начнём', reply_markup=markup)
 
-    keyboard = types.InlineKeyboardMarkup()
-    btn_yes = types.InlineKeyboardButton(text='Да', callback_data='yes')
-    btn_no = types.InlineKeyboardButton(text='Нет', callback_data='no')
-    keyboard.add(btn_yes, btn_no)
+    message_to_me = f"Меня активировали. {get_info(message)}"
+    telegram.notify(token=data['token_bot'], chat_id=data["user_id"], message=message_to_me)
 
-    bot.send_message(message.from_user.id, data['greeting'], reply_markup=keyboard)
+    write_info(get_text_for_write(message) + ', Start\n')
 
 
 @bot.message_handler(content_types=['text'])
 def bot_message(message) -> None:
     """Активация кнопок меню. Каждая кнопка либо создаёт новые кнопки меню либо выводит текст."""
-    global text_read
+
     if message.chat.type == 'private':
 
-        for key, value in dict_command.items():
-            if message.text == key:
-                text_read = value
-                keyboard = types.InlineKeyboardMarkup()
-                # btn_read = types.InlineKeyboardButton(text=data['btn_read_please'], callback_data='btn_read_please')
-                # keyboard.add(btn_read)
-                bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
-
-        if message.text == data['meet']:
+        result_0 = dict_command.get(message.text, False)
+        if result_0:
             keyboard = types.InlineKeyboardMarkup()
-            btn_yes = types.InlineKeyboardButton(text='Да', callback_data='yes')
-            btn_no = types.InlineKeyboardButton(text='Нет', callback_data='no')
-            keyboard.add(btn_yes, btn_no)
+            bot.send_message(message.from_user.id, text=result_0, reply_markup=keyboard)
 
-            bot.send_message(message.from_user.id, data['greeting'], reply_markup=keyboard)
-
-        elif message.text == data['info_author'] or message.text == data['info_author_back']:
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-
-            item1 = types.KeyboardButton(data['knowledge_py'])
-            item2 = types.KeyboardButton(data['last_work'])
-            item3 = types.KeyboardButton(data['personal_skills'])
-            item4 = types.KeyboardButton(data['goals_tasks'])
-            back_btn = types.KeyboardButton(data['back'])
-            markup.add(item1, item2, item3, item4, back_btn)
-            bot.send_message(message.from_user.id, data['info_author'], reply_markup=markup)
-
-        elif message.text == data['knowledge_py']:
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-
-            item1 = types.KeyboardButton('Пройденные курсы и сертификаты')
-            item2 = types.KeyboardButton('Кратко о том что знает')
-            item3 = types.KeyboardButton('Учебный план')
-            item4 = types.KeyboardButton('Проекты')
-            back_btn = types.KeyboardButton(data['info_author_back'])
-            markup.add(item1, item2, item3, item4, back_btn)
-            bot.send_message(message.from_user.id, data['knowledge_py'], reply_markup=markup)
-
-        elif message.text == 'Пройденные курсы и сертификаты':
-            text_read = data['text_completed_course_1']
-            keyboard = types.InlineKeyboardMarkup()
-            # btn_read = types.InlineKeyboardButton(text=data['btn_read_please'], callback_data='btn_read_please')
-            # keyboard.add(btn_read)
-            bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
-            bot.send_message(message.from_user.id, data['text_completed_course_2'])
-
-            for filename in os.listdir(path_certificate):
-                with open(os.path.join(path_certificate, filename), 'rb') as file_pdf:
-                    bot.send_document(message.from_user.id, document=file_pdf)
-
-        elif message.text == 'Проекты':
-            text_read = data['text_project']
-            keyboard = types.InlineKeyboardMarkup()
-            # btn_read = types.InlineKeyboardButton(text=data['btn_read_please'], callback_data='btn_read_please')
-            # keyboard.add(btn_read)
-            bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
-            bot.send_message(message.from_user.id, text=data['text_project_1'])
-
-        elif message.text == data['back']:
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-
-            item1 = types.KeyboardButton(data['meet'])
-            item2 = types.KeyboardButton(data['info_author'])
-            item3 = types.KeyboardButton(data['connection_author'])
-
-            markup.add(item1, item2, item3)
-            bot.send_message(message.from_user.id, text=data['back'], reply_markup=markup)
-
-        elif message.text == data['connection_author']:
-            info_me(message)
+        result = db_buttons.get(message.text, False)
+        if result:
+            result(message)
 
 
-@bot.callback_query_handler(func=lambda call: True)
-def callback_worker(call) -> None:
-    """Функция ищет пользователя в базе, запускает процесс регистрации или сохраняет данные пользователя
-    и отправляет разработчику информацию в зависимости от выбранного варианта."""
-    if call.data == 'yes':
-        bot.send_message(call.message.chat.id, data['text_i_know_you'])
-        bot.send_message(call.message.chat.id, data['what_name'])
-        bot.register_next_step_handler(call.message, find_name)
-
-    elif call.data == 'no':
-        bot.send_message(call.message.chat.id, data['text_i_know_no'])
-        bot.send_message(call.message.chat.id, data['what_name'])
-        bot.register_next_step_handler(call.message, reg_name)
-
-    elif call.data == 'yes_reg':
-        bot.send_message(call.message.chat.id, data['reg_success'])
-        text_info = f'{name_company},{name_representative},{phone_num},{email},{list_user_info[0]},' \
-                    f'{list_user_info[1]},{list_user_info[2]},' \
-                    f'{list_user_info[3]}\n'  # для txt файла
-
-        message_to_me = f"""Со мной познакомились. 
-Вот информация: 
-Название компании: {name_company};
-Представитель: {name_representative};
-Номер телефона: {phone_num};
-Почта: {email};
-
-ID: {list_user_info[0]};
-FIRST_NAME: {list_user_info[1]};
-LAST_NAME: {list_user_info[2]};
-USERNAME: {list_user_info[3]}."""
-
-        telegram.notify(token=data['token_bot'], chat_id=data["user_id"], message=message_to_me)
-        write_info(text_info)
-
-    elif call.data == 'no_reg':
-        bot.send_message(call.message.chat.id, "Хорошо, начнём с начала.")
-        bot.send_message(call.message.chat.id, data['what_name'])
-        bot.register_next_step_handler(call.message, reg_name)
-
-    # elif call.data == 'btn_read_please':
-    #     read_text(text_read)
+# Функции для словаря db_buttons
 
 
-def find_name(message) -> None:
-    """Функция принимает сообщение от пользователя и переходит к следующей функции find_company."""
-    global name_representative
-    name_representative = message.text
-    bot.send_message(message.from_user.id, data['what_company'])
-    bot.register_next_step_handler(message, find_company)
+def info_author(message) -> None:
+    """Функция изменяет кнопки для раздела 'О разработчике'."""
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+    item1 = types.KeyboardButton(data['knowledge_py'])
+    item2 = types.KeyboardButton(data['last_work'])
+    item3 = types.KeyboardButton(data['personal_skills'])
+    item4 = types.KeyboardButton(data['goals_tasks'])
+    back_btn = types.KeyboardButton(data['back'])
+    markup.add(item1, item2, item3, item4, back_btn)
+    bot.send_message(message.from_user.id, data['info_author'], reply_markup=markup)
 
 
-def find_company(message) -> None:
-    """Функция принимает сообщение от пользователя и проверяет наличия имени представителя и название компании,
-    по результатам выдаёт соответсвующий ответ."""
-    global name_company
-    dict_companies = look_in_notebook(name_txt_file)
-    name_company = message.text
-    if name_company.lower() in dict_companies['name_company']:
+def simple_move(message) -> None:
+    """Функция изменяет кнопки для раздела 'Простые действия'."""
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 
-        if name_representative.lower() in dict_companies['name_representative']:
-            # index_for_name_representative = dict_companies['name_company'].index(name_company.lower())
-            # find_name_representative = dict_companies['name_representative'][index_for_name_representative].title()
-            bot.send_message(message.from_user.id,
-                             f'Я нашел Ваше имя в своей записной книжке. Здравствуйте, {name_representative}')
-        else:
-            bot.send_message(message.from_user.id, data['i_not_find_name'])
+    item1 = types.KeyboardButton(data['coin'])
+    item2 = types.KeyboardButton(data['rand_int'])
+    item3 = types.KeyboardButton(data['weather_report'])
+    item4 = types.KeyboardButton(data['simple_list'])
+    back_btn = types.KeyboardButton(data['back'])
+    markup.add(item1, item2, item3, item4, back_btn)
+    bot.send_message(message.from_user.id, data['simple_move'], reply_markup=markup)
+
+
+def knowledge_py(message) -> None:
+    """Функция изменяет кнопки для раздела 'Знание питона'."""
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+    item1 = types.KeyboardButton('Пройденные курсы и сертификаты')
+    item2 = types.KeyboardButton('Кратко о том что знает')
+    item3 = types.KeyboardButton('Учебный план')
+    item4 = types.KeyboardButton('Проекты')
+    back_btn = types.KeyboardButton(data['info_author_back'])
+    markup.add(item1, item2, item3, item4, back_btn)
+    bot.send_message(message.from_user.id, data['knowledge_py'], reply_markup=markup)
+
+
+def course_and_certificate(message) -> None:
+    """Функция отправляет информацию и сертификаты в чат о пройденных курсах."""
+    text_read = data['text_completed_course_1']
+    keyboard = types.InlineKeyboardMarkup()
+
+    bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
+    bot.send_message(message.from_user.id, data['text_completed_course_2'])
+
+    for filename in os.listdir(path_certificate):
+        with open(os.path.join(path_certificate, filename), 'rb') as file_pdf:
+            bot.send_document(message.from_user.id, document=file_pdf)
+
+
+def project(message) -> None:
+    """Функция отправляет информацию в чат о проектах."""
+    text_read = data['text_project']
+    keyboard = types.InlineKeyboardMarkup()
+
+    bot.send_message(message.from_user.id, text=text_read, reply_markup=keyboard)
+    bot.send_message(message.from_user.id, text=data['text_project_1'])
+
+
+def back(message) -> None:
+    """Функция изменяет кнопки для стартового раздела."""
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+    item1 = types.KeyboardButton('Простые действия')
+
+    item2 = types.KeyboardButton(data['info_author'])
+    item3 = types.KeyboardButton(data['connection_author'])
+
+    markup.add(item2, item3, item1)
+    bot.send_message(message.from_user.id, text=data['back'], reply_markup=markup)
+
+
+def coin(message) -> None:
+    """Функция отправляет в чат результат подбрасывания монетки."""
+    result = ("Орёл", "Решка")[randint(0, 1)]
+    bot.send_message(message.from_user.id, text=result)
+
+
+def rand_int(message) -> None:
+    """Функция запрашивает два числа и передаёт их в функцию get_two_numbers для дальнейших действий."""
+    text = f'Введите два числа через пробел. \nПример:\n1 150'
+    bot.send_message(message.from_user.id, text=text)
+    bot.register_next_step_handler(message, get_two_numbers)
+
+
+def get_two_numbers(message) -> None:
+    """Функция принимает два числа, проверяет их на корректность и отправляет в чат
+    случайное число из переданного интервала."""
+    lst = tuple(message.text.split())
+    if all(map(str.isdigit, lst)) and len(lst) == 2:
+        result = randint(*map(int, lst))
+        bot.send_message(message.from_user.id, text=f'Всё верно вот ответ!\n{result}')
     else:
-        bot.send_message(message.from_user.id, data['i_not_find_company'])
+        bot.send_message(message.from_user.id,
+                         text=f'Некорректный ввод. Для повторного ввода нажмите кнопку {data["rand_int"]}')
 
 
-def reg_name(message) -> None:
-    """Функция принимает сообщение от пользователя и переходит к следующей функции reg_company."""
-    global name_representative
-    name_representative = message.text
-    bot.send_message(message.from_user.id, data['what_company'])
-    bot.register_next_step_handler(message, reg_company)
+def simple_list(message) -> None:
+    """Функция запрашивает произвольное число позиционных аргументов и передаёт их
+    в функцию get_list для дальнейших действий."""
+    text = f'''Данная команда выводит заданное кол-во слов из введённого перечня. Отбор происходит случайным образом.
+Введите произвольное кол-во слов через пробел и число.\n\nПример:\nСлово№1 Слово№2 Слово№3 Слово№n 2
+\nВывод:\nСлово№3 Слово№4'''
+    bot.send_message(message.from_user.id, text=text)
+    bot.register_next_step_handler(message, get_list)
 
 
-def reg_company(message) -> None:
-    """Функция принимает сообщение от пользователя и переходит к следующей функции reg_phone_num."""
-    global name_company
-    name_company = message.text
-    bot.send_message(message.from_user.id, data['what_phone_num'])
-    bot.register_next_step_handler(message, reg_phone_num)
+def get_list(message) -> None:
+    """Функция принимает список, проверяет их на корректность и отправляет в чат
+    случайный перечень аргументов, если число аргументов не передано, то будет отправлен в чат один аргумент."""
+    try:
+        lst = tuple(message.text.split())
+        num = 1
+        text_error = f'Некорректный ввод. Для повторного ввода нажмите кнопку "{data["simple_list"]}"'
+        if lst[-1].isdigit():
+            print(lst[-1].isdigit())
+            print(lst[-1])
+            num, lst = int(lst[-1]), lst[:-1]
+
+        if len(lst) < num:
+            text_error = f'''Некорректный ввод, заданное число больше общего списка. 
+Для повторного ввода нажмите кнопку "{data["simple_list"]}"'''
+            raise Exception
+
+    except Exception:
+        bot.send_message(message.from_user.id, text=text_error)
+    else:
+        result = ', '.join(sample(lst, num))
+        bot.send_message(message.from_user.id, text=f'Всё верно вот ответ!\n{result}')
 
 
-def reg_phone_num(message) -> None:
-    """Функция принимает сообщение от пользователя и переходит к следующей функции reg_ok."""
-    global phone_num
-    phone_num = message.text
-    bot.send_message(message.from_user.id, data['what_email'])
-    bot.register_next_step_handler(message, reg_ok)
+def what_city(message) -> None:
+    """Функция запрашивает город и передаёт его в функцию what_is_the_weather для дальнейших действий."""
+    text = f'Напишите город \nПример:\nМосква'
+    bot.send_message(message.from_user.id, text=text)
+    bot.register_next_step_handler(message, what_is_the_weather)
 
 
-def reg_ok(message) -> None:
-    """Функция уточняет вся ли информация переданная из функция reg_company, reg_phone_num, reg_name верна."""
-    global email, list_user_info
-    email = message.text
-    bot.send_message(message.from_user.id, text=f'''Вас зовут {name_representative}
-Контактный телефон: {phone_num}
-Почта: {email}
-Компания: {name_company}''')
+def what_is_the_weather(message) -> None:
+    """Функция для запроса погоды на яндекс-погоде через API(не более 50 запросов в день) и отправки в чат."""
+    url_weather = 'https://api.weather.yandex.ru/v2/informers'
 
-    list_user_info = [message.from_user.id, message.from_user.first_name, message.from_user.last_name,
-                      message.from_user.username]
-    keyboard_reg = types.InlineKeyboardMarkup()
+    headers = {'X-Yandex-API-Key': data["weather_api_key"]}
+    geolocator = geocoders.Nominatim(user_agent="app_assis")
+    city_fun = message.text.title()
 
-    btn_yes_reg = types.InlineKeyboardButton(text='Да', callback_data='yes_reg')
-    btn_no_reg = types.InlineKeyboardButton(text='Нет', callback_data='no_reg')
-    keyboard_reg.add(btn_yes_reg, btn_no_reg)
+    try:
+        latitude = geolocator.geocode(city_fun).latitude
+        longitude = geolocator.geocode(city_fun).longitude
+        weather_params = {
+            'lat': latitude,
+            'lon': longitude,
+            'lang': 'ru_RU'
+        }
+    except Exception:
+        telegram.notify(token=data["token_bot"], chat_id=data["user_id"],
+                        message=f'''Некорректный ввод города. 
+                        Для повторного ввода нажмите кнопку {data["weather_report"]}''')
 
-    bot.send_message(message.from_user.id, 'Верно?', reply_markup=keyboard_reg)
+    else:
+        response = requests.get(url_weather, headers=headers, params=weather_params)
+        data_weather = response.json()
 
+        fact_weather_dict = data_weather['fact']
+
+        result = f"""Прогноз на {dict_part_name_ru['fact']}
+    {dict_conditions_ru[fact_weather_dict['condition']].capitalize()}
+    Температура: {fact_weather_dict['temp']} ℃
+    По ощущениям как {fact_weather_dict['feels_like']} ℃
+    Скорость ветра {fact_weather_dict['wind_speed']} м/с
+
+    """
+
+        for part in data_weather['forecast']['parts']:
+            result += f"""Прогноз на {dict_part_name_ru[part['part_name']]}
+    {dict_conditions_ru[part['condition']].capitalize()}
+    Максимальная температура: {part['temp_max']} ℃
+    Минимальная температура: {part['temp_min']} ℃
+    По ощущениям как {part['feels_like']} ℃
+    Скорость ветра {part['wind_speed']} м/с
+
+    """
+
+        link_weather = str(data_weather['info']['url'])
+
+        result += f"Более подробнее тут:\n{link_weather}"
+        telegram.notify(token=data["token_bot"], chat_id=data["user_id"], message=result)
+
+
+db_buttons = {
+    data['info_author']: info_author,
+    data['info_author_back']: info_author,
+    data['knowledge_py']: knowledge_py,
+    data['connection_author']: info_me,
+    data['course_and_certificate']: course_and_certificate,
+    data['projects']: project,
+    data['simple_move']: simple_move,
+    data['back']: back,
+    data['coin']: coin,
+    data['rand_int']: rand_int,
+    data['weather_report']: what_city,
+    data['simple_list']: simple_list
+}
 
 bot.polling(none_stop=True)

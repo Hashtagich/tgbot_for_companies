@@ -233,8 +233,7 @@ def what_is_the_weather(message) -> None:
             'lang': 'ru_RU'
         }
     except Exception:
-        telegram.notify(token=data["token_bot"], chat_id=data["user_id"],
-                        message=f'''Некорректный ввод города. 
+        bot.send_message(message.from_user.id, text=f'''Некорректный ввод города. 
                         Для повторного ввода нажмите кнопку {data["weather_report"]}''')
 
     else:

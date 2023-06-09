@@ -264,7 +264,7 @@ def what_is_the_weather(message) -> None:
         link_weather = str(data_weather['info']['url'])
 
         result += f"Более подробнее тут:\n{link_weather}"
-        telegram.notify(token=data["token_bot"], chat_id=data["user_id"], message=result)
+        bot.send_message(message.from_user.id, text=result)
 
 
 db_buttons = {
